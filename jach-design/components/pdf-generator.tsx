@@ -1,6 +1,5 @@
 "'use client'";
 
-import { useRef } from 'react';
 import { jsPDF } from 'jspdf';
 import { ExhibitionData } from '@/lib/types';
 import { Button } from '@/components/ui/button';
@@ -10,7 +9,7 @@ interface PDFGeneratorProps {
 }
 
 export function PDFGenerator({ data }: PDFGeneratorProps) {
-	const canvasRef = useRef<HTMLCanvasElement>(null);
+	//const canvasRef = useRef<HTMLCanvasElement>(null);
 
 	const generatePDF = () => {
 		const { length, height, dots, separation } = data;
