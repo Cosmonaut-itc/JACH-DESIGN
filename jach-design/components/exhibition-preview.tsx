@@ -10,6 +10,20 @@ interface ExhibitionPreviewProps {
 	data: ExhibitionData;
 }
 
+const disposeMesh = (mesh: Mesh<BufferGeometry, Material | Material[]>) => {
+	// Dispose geometry
+	if (mesh.geometry) {
+		mesh.geometry.dispose();
+	}
+
+	// Dispose material(s)
+	if (Array.isArray(mesh.material)) {
+		mesh.material.forEach((material) => material.dispose());
+	} else if (mesh.material) {
+		mesh.material.dispose();
+	}
+};
+
 export function ExhibitionPreview({ data }: ExhibitionPreviewProps) {
 	const mountRef = useRef<HTMLDivElement>(null);
 	const sceneRef = useRef<THREE.Scene | null>(null);
@@ -52,26 +66,9 @@ export function ExhibitionPreview({ data }: ExhibitionPreviewProps) {
 			controlsRef.current.dispose();
 		}
 
-		// Clean up Three.js resources
 		sceneRef.current?.traverse((object: Object3D) => {
-			// First, check if it's a Mesh
 			if (object instanceof Mesh) {
-				// At this point, TypeScript knows object is a Mesh
-				const mesh = object as Mesh<BufferGeometry, Material | Material[]>;
-
-				// Now we can safely dispose of the geometry
-				if (mesh.geometry) {
-					mesh.geometry.dispose();
-				}
-
-				// Handle both single materials and material arrays
-				if (Array.isArray(mesh.material)) {
-					// If it's an array of materials
-					mesh.material.forEach((material) => material.dispose());
-				} else if (mesh.material) {
-					// If it's a single material
-					mesh.material.dispose();
-				}
+				disposeMesh(object as Mesh<BufferGeometry, Material | Material[]>);
 			}
 		});
 

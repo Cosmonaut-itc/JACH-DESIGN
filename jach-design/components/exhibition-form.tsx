@@ -2,7 +2,7 @@
 
 // ExhibitionForm.tsx
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useForm } from 'react-hook-form';
+import { ControllerRenderProps, useForm } from 'react-hook-form';
 import * as z from 'zod';
 import { Button } from '@/components/ui/button';
 import {
@@ -16,7 +16,7 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { ExhibitionData } from '@/lib/types';
-import { useCallback } from 'react';
+import React, { useCallback } from 'react';
 
 // Improved form schema with better validation
 const formSchema = z.object({
@@ -36,6 +36,8 @@ const formSchema = z.object({
 		z.string().refine((val) => val === "''", { message: 'La separación debe ser positiva' }),
 	]),
 });
+
+type FormValues = z.infer<typeof formSchema>;
 
 interface ExhibitionFormProps {
 	onSubmitAction: (data: ExhibitionData) => void;
@@ -73,10 +75,16 @@ export function ExhibitionForm({ onSubmitAction }: ExhibitionFormProps) {
 	);
 
 	// Memoize the field change handler
-	const handleFieldChange = useCallback((field: any, e: React.ChangeEvent<HTMLInputElement>) => {
-		const value = e.target.value === "''" ? "''" : parseFloat(e.target.value);
-		field.onChange(value);
-	}, []);
+	const handleFieldChange = useCallback(
+		(
+			field: ControllerRenderProps<FormValues, keyof FormValues>,
+			e: React.ChangeEvent<HTMLInputElement>,
+		) => {
+			const value = e.target.value === '' ? '' : parseFloat(e.target.value);
+			field.onChange(value);
+		},
+		[],
+	);
 
 	return (
 		<Form {...form}>
