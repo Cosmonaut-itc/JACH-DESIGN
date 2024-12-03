@@ -1,7 +1,6 @@
 export interface ExhibitionData {
-  length: number
-  height: number
-  dots: number
-  separation: number
+	length: number;
+	height: number;
+	separation: number;
+	calculatedDots: number;
 }
-

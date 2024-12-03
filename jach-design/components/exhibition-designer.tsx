@@ -1,26 +1,35 @@
 'use client';
 
 import { useState } from 'react';
-import { ExhibitionForm } from './exhibition-form';
-import { ExhibitionPreview } from './exhibition-preview';
-import { PDFGenerator } from './pdf-generator';
+import { ExhibitionForm } from '@/components/exhibition-form';
+import { ExhibitionPreview } from '@/components/exhibition-preview';
+import { PDFGenerator } from '@/components/pdf-generator';
 import { ExhibitionData } from '@/lib/types';
 
-export default function ExhibitionDesigner() {
+export default function Home() {
 	const [exhibitionData, setExhibitionData] = useState<ExhibitionData | null>(null);
 
+	const handleFormSubmit = (data: ExhibitionData) => {
+		setExhibitionData(data);
+	};
+
 	return (
-		<div className="container mx-auto px-4 py-8">
-			<h1 className="text-2xl md:text-3xl lg:text-4xl font-bold mb-6 text-center">
-				Diseñador de Exhibición Jach
-			</h1>
-			<div className="grid gap-6 md:grid-cols-2 lg:gap-8">
-				<div className="space-y-6">
-					<ExhibitionForm onSubmitAction={setExhibitionData} />
-					{exhibitionData && <PDFGenerator data={exhibitionData} />}
+		<main className="container mx-auto p-4">
+			<h1 className="text-2xl font-bold mb-4">JACH Exhibition Design</h1>
+			<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+				<div>
+					<ExhibitionForm onSubmitAction={handleFormSubmit} />
 				</div>
-				{exhibitionData && <ExhibitionPreview data={exhibitionData} />}
+				<div>
+					{exhibitionData && (
+						<>
+							<h2 className="text-xl font-semibold mb-2">Vista Previa 3D</h2>
+							<ExhibitionPreview data={exhibitionData} />
+							<PDFGenerator data={exhibitionData} />
+						</>
+					)}
+				</div>
 			</div>
-		</div>
+		</main>
 	);
 }

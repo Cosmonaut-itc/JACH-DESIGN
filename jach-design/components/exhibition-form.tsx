@@ -1,5 +1,6 @@
 'use client';
 
+// ExhibitionForm.tsx
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import * as z from 'zod';
@@ -15,12 +16,25 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { ExhibitionData } from '@/lib/types';
+import { useCallback } from 'react';
 
+// Improved form schema with better validation
 const formSchema = z.object({
-	length: z.number().positive("'El largo debe ser positivo'"),
-	height: z.number().positive("'La altura debe ser positiva'"),
-	dots: z.number().int().positive("'El número de puntos debe ser un entero positivo'"),
-	separation: z.number().positive("'La separación debe ser positiva'"),
+	length: z.union([
+		z.number().positive('El largo debe ser positivo').max(1000, 'El largo máximo es 1000cm'),
+		z.string().refine((val) => val === "''", { message: 'El largo debe ser positivo' }),
+	]),
+	height: z.union([
+		z.number().positive('La altura debe ser positiva').max(1000, 'La altura máxima es 1000cm'),
+		z.string().refine((val) => val === "''", { message: 'La altura debe ser positiva' }),
+	]),
+	separation: z.union([
+		z
+			.number()
+			.positive('La separación debe ser positiva')
+			.max(100, 'La separación máxima es 100cm'),
+		z.string().refine((val) => val === "''", { message: 'La separación debe ser positiva' }),
+	]),
 });
 
 interface ExhibitionFormProps {
@@ -33,14 +47,36 @@ export function ExhibitionForm({ onSubmitAction }: ExhibitionFormProps) {
 		defaultValues: {
 			length: 215,
 			height: 220,
-			dots: 35,
 			separation: 30,
 		},
+		mode: 'onChange', // Enable real-time validation
 	});
 
-	function handleSubmit(values: z.infer<typeof formSchema>) {
-		onSubmitAction(values);
-	}
+	// Memoize the submit handler to prevent unnecessary rerenders
+	const handleSubmit = useCallback(
+		(values: z.infer<typeof formSchema>) => {
+			const numericValues = {
+				length: typeof values.length === 'number' ? values.length : 0,
+				height: typeof values.height === 'number' ? values.height : 0,
+				separation: typeof values.separation === 'number' ? values.separation : 0,
+			};
+
+			if (numericValues.length && numericValues.height && numericValues.separation) {
+				const calculatedDots = Math.floor(
+					(numericValues.length / numericValues.separation) *
+						(numericValues.height / numericValues.separation),
+				);
+				onSubmitAction({ ...numericValues, calculatedDots });
+			}
+		},
+		[onSubmitAction],
+	);
+
+	// Memoize the field change handler
+	const handleFieldChange = useCallback((field: any, e: React.ChangeEvent<HTMLInputElement>) => {
+		const value = e.target.value === "''" ? "''" : parseFloat(e.target.value);
+		field.onChange(value);
+	}, []);
 
 	return (
 		<Form {...form}>
@@ -55,8 +91,10 @@ export function ExhibitionForm({ onSubmitAction }: ExhibitionFormProps) {
 								<FormControl>
 									<Input
 										type="number"
+										min={1}
+										max={1000}
 										{...field}
-										onChange={(e) => field.onChange(parseFloat(e.target.value))}
+										onChange={(e) => handleFieldChange(field, e)}
 									/>
 								</FormControl>
 								<FormDescription>El largo del área de exhibición</FormDescription>
@@ -73,8 +111,10 @@ export function ExhibitionForm({ onSubmitAction }: ExhibitionFormProps) {
 								<FormControl>
 									<Input
 										type="number"
+										min={1}
+										max={1000}
 										{...field}
-										onChange={(e) => field.onChange(parseFloat(e.target.value))}
+										onChange={(e) => handleFieldChange(field, e)}
 									/>
 								</FormControl>
 								<FormDescription>La altura del área de exhibición</FormDescription>
@@ -83,47 +123,27 @@ export function ExhibitionForm({ onSubmitAction }: ExhibitionFormProps) {
 						)}
 					/>
 				</div>
-				<div className="grid gap-4 sm:grid-cols-2">
-					<FormField
-						control={form.control}
-						name="dots"
-						render={({ field }) => (
-							<FormItem>
-								<FormLabel>Número de Puntos</FormLabel>
-								<FormControl>
-									<Input
-										type="number"
-										{...field}
-										onChange={(e) =>
-											field.onChange(parseInt(e.target.value, 10))
-										}
-									/>
-								</FormControl>
-								<FormDescription>La cantidad de puntos a colocar</FormDescription>
-								<FormMessage />
-							</FormItem>
-						)}
-					/>
-					<FormField
-						control={form.control}
-						name="separation"
-						render={({ field }) => (
-							<FormItem>
-								<FormLabel>Separación (cm)</FormLabel>
-								<FormControl>
-									<Input
-										type="number"
-										{...field}
-										onChange={(e) => field.onChange(parseFloat(e.target.value))}
-									/>
-								</FormControl>
-								<FormDescription>La separación mínima entre puntos</FormDescription>
-								<FormMessage />
-							</FormItem>
-						)}
-					/>
-				</div>
-				<Button type="submit" className="w-full">
+				<FormField
+					control={form.control}
+					name="separation"
+					render={({ field }) => (
+						<FormItem>
+							<FormLabel>Separación (cm)</FormLabel>
+							<FormControl>
+								<Input
+									type="number"
+									min={1}
+									max={100}
+									{...field}
+									onChange={(e) => handleFieldChange(field, e)}
+								/>
+							</FormControl>
+							<FormDescription>La separación mínima entre puntos</FormDescription>
+							<FormMessage />
+						</FormItem>
+					)}
+				/>
+				<Button type="submit" className="w-full" disabled={!form.formState.isValid}>
 					Generar Vista Previa
 				</Button>
 			</form>

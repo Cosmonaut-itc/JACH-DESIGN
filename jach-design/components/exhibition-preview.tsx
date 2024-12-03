@@ -1,178 +1,184 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-import WEBGL from 'three/examples/jsm/capabilities/WebGL.js';
 import { ExhibitionData } from '@/lib/types';
+import { BufferGeometry, Material, Mesh, Object3D } from 'three';
 
 interface ExhibitionPreviewProps {
 	data: ExhibitionData;
 }
 
 export function ExhibitionPreview({ data }: ExhibitionPreviewProps) {
-	// Reference to the mounting div and state for component size
 	const mountRef = useRef<HTMLDivElement>(null);
+	const sceneRef = useRef<THREE.Scene | null>(null);
+	const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
+	const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
+	const controlsRef = useRef<OrbitControls | null>(null);
+	const animationFrameIdRef = useRef<number>();
+
 	const [size, setSize] = useState({ width: 0, height: 0 });
 
-	// Effect to handle component resizing
-	useEffect(() => {
-		const updateSize = () => {
-			if (mountRef.current) {
-				setSize({
-					width: mountRef.current.clientWidth,
-					height: mountRef.current.clientWidth * 0.75, // Maintaining 4:3 aspect ratio
-				});
-			}
-		};
-
-		// Add resize listener and perform initial size calculation
-		window.addEventListener('resize', updateSize);
-		updateSize();
-
-		// Cleanup resize listener
-		return () => window.removeEventListener('resize', updateSize);
+	// Memoized size update handler
+	const updateSize = useCallback(() => {
+		if (mountRef.current) {
+			const width = mountRef.current.clientWidth;
+			setSize({
+				width,
+				height: width * 0.75,
+			});
+		}
 	}, []);
 
-	// Main Three.js setup and rendering effect
+	// Handle resize events
 	useEffect(() => {
-		// Don't proceed if mount point isn't ready or size isn't set
+		window.addEventListener('resize', updateSize);
+		updateSize();
+		return () => window.removeEventListener('resize', updateSize);
+	}, [updateSize]);
+
+	// Clean up Three.js resources
+	const cleanup = useCallback(() => {
+		if (animationFrameIdRef.current) {
+			cancelAnimationFrame(animationFrameIdRef.current);
+		}
+
+		if (rendererRef.current && mountRef.current) {
+			mountRef.current.removeChild(rendererRef.current.domElement);
+		}
+
+		if (controlsRef.current) {
+			controlsRef.current.dispose();
+		}
+
+		// Clean up Three.js resources
+		sceneRef.current?.traverse((object: Object3D) => {
+			// First, check if it's a Mesh
+			if (object instanceof Mesh) {
+				// At this point, TypeScript knows object is a Mesh
+				const mesh = object as Mesh<BufferGeometry, Material | Material[]>;
+
+				// Now we can safely dispose of the geometry
+				if (mesh.geometry) {
+					mesh.geometry.dispose();
+				}
+
+				// Handle both single materials and material arrays
+				if (Array.isArray(mesh.material)) {
+					// If it's an array of materials
+					mesh.material.forEach((material) => material.dispose());
+				} else if (mesh.material) {
+					// If it's a single material
+					mesh.material.dispose();
+				}
+			}
+		});
+
+		if (rendererRef.current) {
+			rendererRef.current.dispose();
+			rendererRef.current = null;
+		}
+
+		sceneRef.current = null;
+		cameraRef.current = null;
+		controlsRef.current = null;
+	}, []);
+
+	// Main scene setup and update effect
+	useEffect(() => {
 		if (!mountRef.current || size.width === 0 || size.height === 0) return;
 
-		// Destructure exhibition data parameters
-		const { length, height, dots, separation } = data;
+		// Clean up existing scene
+		cleanup();
 
-		try {
-			// Check WebGL availability
-			if (!WEBGL.isWebGL2Available()) {
-				const warning = WEBGL.getWebGL2ErrorMessage();
-				mountRef.current.appendChild(warning);
-				return;
-			}
+		const { length, height, separation } = data;
 
-			// Scene setup
-			const scene = new THREE.Scene();
-			scene.background = new THREE.Color(0xffffff);
+		// Scene initialization
+		sceneRef.current = new THREE.Scene();
+		sceneRef.current.background = new THREE.Color(0xffffff);
 
-			// Camera setup with proper aspect ratio
-			const camera = new THREE.PerspectiveCamera(45, size.width / size.height, 0.1, 2000);
+		// Camera initialization
+		cameraRef.current = new THREE.PerspectiveCamera(45, size.width / size.height, 0.1, 2000);
+		cameraRef.current.position.set(0, 0, Math.max(length, height) * 1.5);
 
-			// Renderer initialization
-			const renderer = new THREE.WebGLRenderer({ antialias: true });
-			renderer.setSize(size.width, size.height);
-			mountRef.current.innerHTML = '';
-			mountRef.current.appendChild(renderer.domElement);
+		// Renderer initialization
+		rendererRef.current = new THREE.WebGLRenderer({
+			antialias: true,
+			powerPreference: 'high-performance',
+		});
+		rendererRef.current.setSize(size.width, size.height);
+		rendererRef.current.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+		mountRef.current.appendChild(rendererRef.current.domElement);
 
-			// Orbit controls setup
-			const controls = new OrbitControls(camera, renderer.domElement);
-			controls.enableDamping = true;
-			controls.dampingFactor = 0.05;
+		// Controls initialization
+		if (cameraRef.current && rendererRef.current) {
+			controlsRef.current = new OrbitControls(
+				cameraRef.current,
+				rendererRef.current.domElement,
+			);
+			controlsRef.current.enableDamping = true;
+			controlsRef.current.dampingFactor = 0.05;
+		}
 
-			// Create main exhibition area
-			const areaGeometry = new THREE.BoxGeometry(length, height, 1);
-			const areaMaterial = new THREE.MeshBasicMaterial({ color: 0xeeeeee });
-			const areaMesh = new THREE.Mesh(areaGeometry, areaMaterial);
-			scene.add(areaMesh);
+		// Create geometries and materials
+		const areaGeometry = new THREE.BoxGeometry(length, height, 1);
+		const areaMaterial = new THREE.MeshBasicMaterial({ color: 0xeeeeee });
+		const areaMesh = new THREE.Mesh(areaGeometry, areaMaterial);
+		sceneRef.current.add(areaMesh);
 
-			// Add base platform
-			const baseGeometry = new THREE.BoxGeometry(length + 20, 20, 40);
-			const baseMaterial = new THREE.MeshBasicMaterial({ color: 0x0000aa });
-			const baseMesh = new THREE.Mesh(baseGeometry, baseMaterial);
-			baseMesh.position.y = -height / 2 - 10;
-			baseMesh.position.z = 15;
-			scene.add(baseMesh);
+		const baseGeometry = new THREE.BoxGeometry(length + 20, 20, 40);
+		const baseMaterial = new THREE.MeshBasicMaterial({ color: 0x0000aa });
+		const baseMesh = new THREE.Mesh(baseGeometry, baseMaterial);
+		baseMesh.position.y = -height / 2 - 10;
+		baseMesh.position.z = 15;
+		sceneRef.current.add(baseMesh);
 
-			// Create and place dots
-			const dotGeometry = new THREE.CircleGeometry(2, 32);
-			const dotMaterial = new THREE.MeshBasicMaterial({
-				color: 0xff0000,
-				side: THREE.DoubleSide,
-			});
+		// Create dots using instanced mesh for better performance
+		const cols = Math.floor(length / separation);
+		const rows = Math.floor(height / separation);
+		const totalDots = cols * rows;
 
-			const cols = Math.floor(length / separation);
-			const rows = Math.floor(height / separation);
+		const dotGeometry = new THREE.CircleGeometry(2, 32);
+		const dotMaterial = new THREE.MeshBasicMaterial({
+			color: 0xff0000,
+			side: THREE.DoubleSide,
+		});
+		const instancedDots = new THREE.InstancedMesh(dotGeometry, dotMaterial, totalDots);
 
-			// Store all created dots for potential future interaction
-			const dotMeshes: THREE.Mesh[] = [];
-
-			for (let i = 0; i < rows; i++) {
-				for (let j = 0; j < cols; j++) {
-					if (i * cols + j >= dots) break;
-
-					const dot = new THREE.Mesh(dotGeometry, dotMaterial);
-					dot.position.set(
-						j * separation - length / 2 + separation / 2,
-						height / 2 - (i * separation + separation / 2),
-						0.6,
-					);
-					scene.add(dot);
-					dotMeshes.push(dot);
-				}
-			}
-
-			// Position camera to view entire exhibition
-			camera.position.set(0, 0, Math.max(length, height) * 1.5);
-			controls.update();
-
-			// Animation loop setup
-			let animationFrameId: number;
-			const animate = () => {
-				animationFrameId = requestAnimationFrame(animate);
-				controls.update();
-				renderer.render(scene, camera);
-			};
-			animate();
-
-			// Comprehensive cleanup
-			return () => {
-				// Cancel animation frame
-				cancelAnimationFrame(animationFrameId);
-
-				// Dispose of geometries
-				areaGeometry.dispose();
-				baseGeometry.dispose();
-				dotGeometry.dispose();
-
-				// Dispose of materials
-				areaMaterial.dispose();
-				baseMaterial.dispose();
-				dotMaterial.dispose();
-
-				// Dispose of meshes
-				dotMeshes.forEach((dot) => {
-					dot.geometry.dispose();
-					if (dot.material instanceof THREE.Material) {
-						dot.material.dispose();
-					}
-				});
-
-				// Dispose of controls
-				controls.dispose();
-
-				// Dispose of renderer
-				renderer.dispose();
-
-				// Clean up mount point
-				if (mountRef.current) {
-					mountRef.current.innerHTML = '';
-				}
-			};
-		} catch (error) {
-			console.error('Error initializing Three.js:', error);
-			if (mountRef.current) {
-				mountRef.current.innerHTML = 'Error initializing 3D preview';
+		let index = 0;
+		const matrix = new THREE.Matrix4();
+		for (let i = 0; i < rows; i++) {
+			for (let j = 0; j < cols; j++) {
+				matrix.setPosition(
+					j * separation - length / 2 + separation / 2,
+					height / 2 - (i * separation + separation / 2),
+					0.6,
+				);
+				instancedDots.setMatrixAt(index, matrix);
+				index++;
 			}
 		}
-	}, [data, size]);
+		sceneRef.current.add(instancedDots);
 
-	// Component render
+		// Animation loop
+		const animate = () => {
+			animationFrameIdRef.current = requestAnimationFrame(animate);
+			if (controlsRef.current) controlsRef.current.update();
+			if (rendererRef.current && sceneRef.current && cameraRef.current) {
+				rendererRef.current.render(sceneRef.current, cameraRef.current);
+			}
+		};
+		animate();
+
+		// Cleanup on unmount or data change
+		return cleanup;
+	}, [data.length, data.height, data.separation, size.width, size.height, cleanup]);
+
 	return (
-		<div className="bg-white p-4 rounded-lg shadow">
-			<h2 className="text-xl font-semibold mb-4">Vista Previa 3D</h2>
-			<div
-				ref={mountRef}
-				className="w-full aspect-[4/3] border border-neutral-200 rounded-lg dark:border-neutral-800"
-			/>
-		</div>
+		<div
+			ref={mountRef}
+			className="w-full aspect-[4/3] border border-neutral-200 rounded-lg dark:border-neutral-800"
+		/>
 	);
 }
