@@ -2,5 +2,8 @@ export interface ExhibitionData {
 	length: number;
 	height: number;
 	separation: number;
-	calculatedDots: number;
+	clientName: string;
+	sellerName: string;
+	projectName: string;
+	deliveryDate: string;
 }

@@ -1,8 +1,7 @@
 'use client';
 
-// ExhibitionForm.tsx
 import { zodResolver } from '@hookform/resolvers/zod';
-import { ControllerRenderProps, useForm } from 'react-hook-form';
+import { useForm } from 'react-hook-form';
 import * as z from 'zod';
 import { Button } from '@/components/ui/button';
 import {
@@ -16,28 +15,38 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { ExhibitionData } from '@/lib/types';
-import React, { useCallback } from 'react';
+import { useCallback } from 'react';
+import { format } from 'date-fns';
+import { es } from 'date-fns/locale';
+import { CalendarIcon } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { Button as Button2 } from '@/components/ui/button';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
-// Improved form schema with better validation
 const formSchema = z.object({
 	length: z.union([
 		z.number().positive('El largo debe ser positivo').max(1000, 'El largo máximo es 1000cm'),
-		z.string().refine((val) => val === "''", { message: 'El largo debe ser positivo' }),
+		z.string().refine((val) => val === '', { message: 'El largo debe ser positivo' }),
 	]),
 	height: z.union([
 		z.number().positive('La altura debe ser positiva').max(1000, 'La altura máxima es 1000cm'),
-		z.string().refine((val) => val === "''", { message: 'La altura debe ser positiva' }),
+		z.string().refine((val) => val === '', { message: 'La altura debe ser positiva' }),
 	]),
 	separation: z.union([
 		z
 			.number()
 			.positive('La separación debe ser positiva')
 			.max(100, 'La separación máxima es 100cm'),
-		z.string().refine((val) => val === "''", { message: 'La separación debe ser positiva' }),
+		z.string().refine((val) => val === '', { message: 'La separación debe ser positiva' }),
 	]),
+	clientName: z.string().min(1, 'El nombre del cliente es requerido'),
+	sellerName: z.string().min(1, 'El nombre del vendedor es requerido'),
+	projectName: z.string().min(1, 'El nombre del proyecto es requerido'),
+	deliveryDate: z.date({
+		required_error: 'La fecha de entrega es requerida',
+	}),
 });
-
-type FormValues = z.infer<typeof formSchema>;
 
 interface ExhibitionFormProps {
 	onSubmitAction: (data: ExhibitionData) => void;
@@ -50,11 +59,14 @@ export function ExhibitionForm({ onSubmitAction }: ExhibitionFormProps) {
 			length: 215,
 			height: 220,
 			separation: 30,
+			clientName: '',
+			sellerName: '',
+			projectName: '',
+			deliveryDate: new Date(),
 		},
-		mode: 'onChange', // Enable real-time validation
+		mode: 'onChange',
 	});
 
-	// Memoize the submit handler to prevent unnecessary rerenders
 	const handleSubmit = useCallback(
 		(values: z.infer<typeof formSchema>) => {
 			const numericValues = {
@@ -64,27 +76,22 @@ export function ExhibitionForm({ onSubmitAction }: ExhibitionFormProps) {
 			};
 
 			if (numericValues.length && numericValues.height && numericValues.separation) {
-				const calculatedDots = Math.floor(
-					(numericValues.length / numericValues.separation) *
-						(numericValues.height / numericValues.separation),
-				);
-				onSubmitAction({ ...numericValues, calculatedDots });
+				onSubmitAction({
+					...numericValues,
+					clientName: values.clientName,
+					sellerName: values.sellerName,
+					projectName: values.projectName,
+					deliveryDate: format(values.deliveryDate, 'yyyy-MM-dd'),
+				});
 			}
 		},
 		[onSubmitAction],
 	);
 
-	// Memoize the field change handler
-	const handleFieldChange = useCallback(
-		(
-			field: ControllerRenderProps<FormValues, keyof FormValues>,
-			e: React.ChangeEvent<HTMLInputElement>,
-		) => {
-			const value = e.target.value === '' ? '' : parseFloat(e.target.value);
-			field.onChange(value);
-		},
-		[],
-	);
+	const handleFieldChange = useCallback((field: any, e: React.ChangeEvent<HTMLInputElement>) => {
+		const value = e.target.value === '' ? '' : parseFloat(e.target.value);
+		field.onChange(value);
+	}, []);
 
 	return (
 		<Form {...form}>
@@ -147,6 +154,95 @@ export function ExhibitionForm({ onSubmitAction }: ExhibitionFormProps) {
 								/>
 							</FormControl>
 							<FormDescription>La separación mínima entre puntos</FormDescription>
+							<FormMessage />
+						</FormItem>
+					)}
+				/>
+				<FormField
+					control={form.control}
+					name="clientName"
+					render={({ field }) => (
+						<FormItem>
+							<FormLabel>Nombre del Cliente</FormLabel>
+							<FormControl>
+								<Input {...field} />
+							</FormControl>
+							<FormMessage />
+						</FormItem>
+					)}
+				/>
+				<FormField
+					control={form.control}
+					name="sellerName"
+					render={({ field }) => (
+						<FormItem>
+							<FormLabel>Nombre del Vendedor</FormLabel>
+							<FormControl>
+								<Input {...field} />
+							</FormControl>
+							<FormMessage />
+						</FormItem>
+					)}
+				/>
+				<FormField
+					control={form.control}
+					name="projectName"
+					render={({ field }) => (
+						<FormItem>
+							<FormLabel>Nombre del Proyecto</FormLabel>
+							<FormControl>
+								<Input {...field} />
+							</FormControl>
+							<FormMessage />
+						</FormItem>
+					)}
+				/>
+				<FormField
+					control={form.control}
+					name="deliveryDate"
+					render={({ field }) => (
+						<FormItem className="flex flex-col">
+							<FormLabel>Fecha de Entrega</FormLabel>
+							<Popover>
+								<PopoverTrigger asChild>
+									<FormControl>
+										<Button2
+											variant={'outline'}
+											className={cn(
+												'w-full pl-3 text-left font-normal',
+												!field.value && 'text-muted-foreground',
+											)}>
+											{field.value ? (
+												format(field.value, 'PPP', { locale: es })
+											) : (
+												<span>Seleccionar fecha</span>
+											)}
+											<CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+										</Button2>
+									</FormControl>
+								</PopoverTrigger>
+								<PopoverContent className="w-auto p-0" align="start">
+									<Calendar
+										mode="single"
+										selected={field.value}
+										onSelect={field.onChange}
+										disabled={(date) =>
+											date < new Date() ||
+											date >
+												new Date(
+													new Date().setFullYear(
+														new Date().getFullYear() + 1,
+													),
+												)
+										}
+										initialFocus
+										locale={es}
+									/>
+								</PopoverContent>
+							</Popover>
+							<FormDescription>
+								Selecciona la fecha de entrega del proyecto.
+							</FormDescription>
 							<FormMessage />
 						</FormItem>
 					)}
