@@ -43,18 +43,35 @@ export function PDFGenerator({ data }: PDFGeneratorProps) {
 		pdf.text(`Proyecto: ${projectName}`, padding, padding + 30);
 		pdf.text(`Fecha de Entrega: ${deliveryDate}`, padding, padding + 45);
 
-		pdf.text(`Dimensiones: ${length}cm x ${height}cm`, LETTER_WIDTH - 200, padding);
-		pdf.text(`Separación: ${separation}cm`, LETTER_WIDTH - 200, padding + 15);
-		pdf.text(`Total de Puntos: ${calculatedDots}`, LETTER_WIDTH - 200, padding + 30);
-
-		// Separator line
-		pdf.setDrawColor(200);
-		pdf.line(padding, headerHeight - 15, LETTER_WIDTH - padding, headerHeight - 15);
-
 		// Calculate the scaling factor to fit the exhibition area
 		const scaleX = availableWidth / (length * 2.83465);
 		const scaleY = availableHeight / (height * 2.83465);
 		const scale = Math.min(scaleX, scaleY);
+
+		// Calculate edge-to-point distances
+		const horizontalEdgeSpace = (length - (cols - 1) * separation) / 2;
+		const verticalEdgeSpace = (height - (rows - 1) * separation) / 2;
+
+		// Round measurements to one decimal place for cleaner display
+		const roundToOne = (num: number) => Math.round(num * 10) / 10;
+
+		pdf.text(`Dimensiones: ${length}cm x ${height}cm`, LETTER_WIDTH - 280, padding);
+		pdf.text(`Separación entre puntos: ${separation}cm`, LETTER_WIDTH - 280, padding + 15);
+		pdf.text(`Total de Puntos: ${calculatedDots}`, LETTER_WIDTH - 280, padding + 30);
+		pdf.text(
+			`Distancia al borde (Horizontal): ${roundToOne(horizontalEdgeSpace)}cm`,
+			LETTER_WIDTH - 280,
+			padding + 45,
+		);
+		pdf.text(
+			`Distancia al borde (Vertical): ${roundToOne(verticalEdgeSpace)}cm`,
+			LETTER_WIDTH - 280,
+			padding + 60,
+		);
+
+		// Separator line
+		pdf.setDrawColor(200);
+		pdf.line(padding, headerHeight + 15, LETTER_WIDTH - padding, headerHeight + 15);
 
 		// Calculate the actual dimensions after scaling
 		const actualWidth = length * 2.83465 * scale;
@@ -90,7 +107,7 @@ export function PDFGenerator({ data }: PDFGeneratorProps) {
 			}
 		}
 
-		pdf.save('exhibition-layout.pdf');
+		pdf.save(`exhibicion_${clientName}_${deliveryDate}.pdf`);
 	};
 
 	return (
