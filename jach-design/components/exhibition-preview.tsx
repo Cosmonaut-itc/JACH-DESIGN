@@ -1,137 +1,60 @@
 'use client';
 
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef } from 'react';
 import * as THREE from 'three';
-import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 import { ExhibitionData } from '@/lib/types';
-import { BufferGeometry, Material, Mesh, Object3D } from 'three';
 
 interface ExhibitionPreviewProps {
 	data: ExhibitionData;
 }
 
-const disposeMesh = (mesh: Mesh<BufferGeometry, Material | Material[]>) => {
-	// Dispose geometry
-	if (mesh.geometry) {
-		mesh.geometry.dispose();
-	}
-
-	// Dispose material(s)
-	if (Array.isArray(mesh.material)) {
-		mesh.material.forEach((material) => material.dispose());
-	} else if (mesh.material) {
-		mesh.material.dispose();
-	}
-};
-
 export function ExhibitionPreview({ data }: ExhibitionPreviewProps) {
 	const mountRef = useRef<HTMLDivElement>(null);
-	const sceneRef = useRef<THREE.Scene | null>(null);
-	const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
-	const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
-	const controlsRef = useRef<OrbitControls | null>(null);
-	const animationFrameIdRef = useRef<number>();
 
-	const [size, setSize] = useState({ width: 0, height: 0 });
-
-	// Memoized size update handler
-	const updateSize = useCallback(() => {
-		if (mountRef.current) {
-			const width = mountRef.current.clientWidth;
-			setSize({
-				width,
-				height: width * 0.75,
-			});
-		}
-	}, []);
-
-	// Handle resize events
 	useEffect(() => {
-		window.addEventListener('resize', updateSize);
-		updateSize();
-		return () => window.removeEventListener('resize', updateSize);
-	}, [updateSize]);
+		if (!mountRef.current) return;
 
-	// Clean up Three.js resources
-	const cleanup = useCallback(() => {
-		if (animationFrameIdRef.current) {
-			cancelAnimationFrame(animationFrameIdRef.current);
-		}
+		const { length, height, separation, productCodes } = data;
 
-		if (rendererRef.current && mountRef.current) {
-			mountRef.current.removeChild(rendererRef.current.domElement);
-		}
+		const scene = new THREE.Scene();
+		scene.background = new THREE.Color(0xffffff);
 
-		if (controlsRef.current) {
-			controlsRef.current.dispose();
-		}
+		const camera = new THREE.PerspectiveCamera(
+			45,
+			mountRef.current.clientWidth / mountRef.current.clientHeight,
+			0.1,
+			2000,
+		);
+		camera.position.set(0, 0, Math.max(length, height) * 1.5);
 
-		sceneRef.current?.traverse((object: Object3D) => {
-			if (object instanceof Mesh) {
-				disposeMesh(object as Mesh<BufferGeometry, Material | Material[]>);
-			}
-		});
-
-		if (rendererRef.current) {
-			rendererRef.current.dispose();
-			rendererRef.current = null;
-		}
-
-		sceneRef.current = null;
-		cameraRef.current = null;
-		controlsRef.current = null;
-	}, []);
-
-	// Main scene setup and update effect
-	useEffect(() => {
-		if (!mountRef.current || size.width === 0 || size.height === 0) return;
-
-		// Clean up existing scene
-		cleanup();
-
-		const { length, height, separation } = data;
-
-		// Scene initialization
-		sceneRef.current = new THREE.Scene();
-		sceneRef.current.background = new THREE.Color(0xffffff);
-
-		// Camera initialization
-		cameraRef.current = new THREE.PerspectiveCamera(45, size.width / size.height, 0.1, 2000);
-		cameraRef.current.position.set(0, 0, Math.max(length, height) * 1.5);
-
-		// Renderer initialization
-		rendererRef.current = new THREE.WebGLRenderer({
+		const renderer = new THREE.WebGLRenderer({
 			antialias: true,
 			powerPreference: 'high-performance',
 		});
-		rendererRef.current.setSize(size.width, size.height);
-		rendererRef.current.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-		mountRef.current.appendChild(rendererRef.current.domElement);
+		renderer.setSize(mountRef.current.clientWidth, mountRef.current.clientHeight);
+		renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+		mountRef.current.appendChild(renderer.domElement);
 
-		// Controls initialization
-		if (cameraRef.current && rendererRef.current) {
-			controlsRef.current = new OrbitControls(
-				cameraRef.current,
-				rendererRef.current.domElement,
-			);
-			controlsRef.current.enableDamping = true;
-			controlsRef.current.dampingFactor = 0.05;
-		}
+		const controls = new OrbitControls(camera, renderer.domElement);
+		controls.enableDamping = true;
+		controls.dampingFactor = 0.05;
 
-		// Create geometries and materials
+		// Create exhibition area
 		const areaGeometry = new THREE.BoxGeometry(length, height, 1);
 		const areaMaterial = new THREE.MeshBasicMaterial({ color: 0xeeeeee });
 		const areaMesh = new THREE.Mesh(areaGeometry, areaMaterial);
-		sceneRef.current.add(areaMesh);
+		scene.add(areaMesh);
 
+		// Create base
 		const baseGeometry = new THREE.BoxGeometry(length + 20, 20, 40);
 		const baseMaterial = new THREE.MeshBasicMaterial({ color: 0x0000aa });
 		const baseMesh = new THREE.Mesh(baseGeometry, baseMaterial);
 		baseMesh.position.y = -height / 2 - 10;
 		baseMesh.position.z = 15;
-		sceneRef.current.add(baseMesh);
+		scene.add(baseMesh);
 
-		// Create dots using instanced mesh for better performance
+		// Create mounting points with product codes
 		const cols = Math.floor(length / separation);
 		const rows = Math.floor(height / separation);
 		const totalDots = cols * rows;
@@ -143,34 +66,63 @@ export function ExhibitionPreview({ data }: ExhibitionPreviewProps) {
 		});
 		const instancedDots = new THREE.InstancedMesh(dotGeometry, dotMaterial, totalDots);
 
+		const canvas = document.createElement('canvas');
+		const context = canvas.getContext('2d');
+		if (context) {
+			context.font = '12px Arial';
+			context.fillStyle = 'black';
+		}
+
 		let index = 0;
 		const matrix = new THREE.Matrix4();
 		for (let i = 0; i < rows; i++) {
 			for (let j = 0; j < cols; j++) {
-				matrix.setPosition(
-					j * separation - length / 2 + separation / 2,
-					height / 2 - (i * separation + separation / 2),
-					0.6,
-				);
+				const x = j * separation - length / 2 + separation / 2;
+				const y = height / 2 - (i * separation + separation / 2);
+				matrix.setPosition(x, y, 0.6);
 				instancedDots.setMatrixAt(index, matrix);
+
+				if (productCodes && productCodes[index]) {
+					if (context) {
+						canvas.width = 64;
+						canvas.height = 32;
+						context.clearRect(0, 0, canvas.width, canvas.height);
+						context.fillText(productCodes[index], 0, 16);
+					}
+					const texture = new THREE.CanvasTexture(canvas);
+					const spriteMaterial = new THREE.SpriteMaterial({ map: texture });
+					const sprite = new THREE.Sprite(spriteMaterial);
+					sprite.position.set(x, y, 0.7);
+					sprite.scale.set(20, 10, 1);
+					scene.add(sprite);
+				}
+
 				index++;
 			}
 		}
-		sceneRef.current.add(instancedDots);
+		scene.add(instancedDots);
 
-		// Animation loop
 		const animate = () => {
-			animationFrameIdRef.current = requestAnimationFrame(animate);
-			if (controlsRef.current) controlsRef.current.update();
-			if (rendererRef.current && sceneRef.current && cameraRef.current) {
-				rendererRef.current.render(sceneRef.current, cameraRef.current);
-			}
+			requestAnimationFrame(animate);
+			controls.update();
+			renderer.render(scene, camera);
 		};
 		animate();
 
-		// Cleanup on unmount or data change
-		return cleanup;
-	}, [data.length, data.height, data.separation, size.width, size.height, cleanup]);
+		const handleResize = () => {
+			if (!mountRef.current) return;
+			camera.aspect = mountRef.current.clientWidth / mountRef.current.clientHeight;
+			camera.updateProjectionMatrix();
+			renderer.setSize(mountRef.current.clientWidth, mountRef.current.clientHeight);
+		};
+
+		window.addEventListener('resize', handleResize);
+
+		return () => {
+			window.removeEventListener('resize', handleResize);
+			mountRef.current?.removeChild(renderer.domElement);
+		};
+	}, [data]);
 
 	return (
 		<div

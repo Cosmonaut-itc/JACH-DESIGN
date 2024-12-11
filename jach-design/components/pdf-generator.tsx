@@ -10,43 +10,42 @@ interface PDFGeneratorProps {
 
 export function PDFGenerator({ data }: PDFGeneratorProps) {
 	const generatePDF = () => {
-		const { length, height, separation, clientName, sellerName, projectName, deliveryDate } =
-			data;
+		const {
+			length,
+			height,
+			separation,
+			clientName,
+			sellerName,
+			projectName,
+			deliveryDate,
+			productCodes,
+		} = data;
 
-		// Letter size dimensions in points (8.5" x 11")
-		const LETTER_WIDTH = 612;
-		const LETTER_HEIGHT = 792;
-
-		// Initialize PDF in Letter format
 		const pdf = new jsPDF({
 			orientation: 'portrait',
 			unit: 'pt',
 			format: 'letter',
 		});
 
-		const padding = 40; // Increased padding for better margins
-		const headerHeight = 90; // Space reserved for header content
+		const padding = 40;
+		const headerHeight = 120;
 
-		// Calculate available space for the exhibition area
+		const LETTER_WIDTH = 612;
+		const LETTER_HEIGHT = 792;
+
 		const availableWidth = LETTER_WIDTH - 2 * padding;
 		const availableHeight = LETTER_HEIGHT - headerHeight - 2 * padding;
 
-		// Calculate the number of dots
 		const cols = Math.floor(length / separation);
 		const rows = Math.floor(height / separation);
 		const calculatedDots = cols * rows;
 
-		// Header information with improved positioning
-		pdf.setFontSize(10); // Slightly larger font for better readability
+		// Header information
+		pdf.setFontSize(10);
 		pdf.text(`Cliente: ${clientName}`, padding, padding);
 		pdf.text(`Vendedor: ${sellerName}`, padding, padding + 15);
 		pdf.text(`Proyecto: ${projectName}`, padding, padding + 30);
-		pdf.text(`Fecha de Entrega: ${deliveryDate}`, padding, padding + 45);
-
-		// Calculate the scaling factor to fit the exhibition area
-		const scaleX = availableWidth / (length * 2.83465);
-		const scaleY = availableHeight / (height * 2.83465);
-		const scale = Math.min(scaleX, scaleY);
+		pdf.text(`Fecha de Entrega: ${deliveryDate.toLocaleDateString()}`, padding, padding + 45);
 
 		// Calculate edge-to-point distances
 		const horizontalEdgeSpace = (length - (cols - 1) * separation) / 2;
@@ -71,43 +70,41 @@ export function PDFGenerator({ data }: PDFGeneratorProps) {
 
 		// Separator line
 		pdf.setDrawColor(200);
-		pdf.line(padding, headerHeight + 15, LETTER_WIDTH - padding, headerHeight + 15);
+		pdf.line(padding, headerHeight - 15, LETTER_WIDTH - padding, headerHeight - 15);
 
-		// Calculate the actual dimensions after scaling
-		const actualWidth = length * 2.83465 * scale;
-		const actualHeight = height * 2.83465 * scale;
+		// Calculate scaling factor
+		const scaleX = availableWidth / length;
+		const scaleY = availableHeight / height;
+		const scale = Math.min(scaleX, scaleY);
 
-		// Center the exhibition area
-		const startX = padding + (availableWidth - actualWidth) / 2;
-		const startY = headerHeight + (availableHeight - actualHeight) / 2;
+		// Calculate start position to center the drawing
+		const startX = padding + (availableWidth - length * scale) / 2;
+		const startY = headerHeight + (availableHeight - height * scale) / 2;
 
 		// Draw exhibition area outline
 		pdf.setDrawColor(0);
 		pdf.setLineWidth(0.5);
-		pdf.rect(startX, startY, actualWidth, actualHeight);
+		pdf.rect(startX, startY, length * scale, height * scale);
 
-		// Calculate the drawable area (excluding the border)
-		const drawableWidth = actualWidth - 10; // Subtract 2 points for the border
-		const drawableHeight = actualHeight - 10;
-
-		// Calculate spacing between dots using the drawable area
-		const spacingX = drawableWidth / (cols - 1);
-		const spacingY = drawableHeight / (rows - 1);
-
-		// Calculate dot size (smaller of the two spacings, with a maximum size)
-		const dotSize = Math.min(spacingX, spacingY, 4) * 0.7;
-
-		// Draw dots with proper margins, offset by 1 point from the border
+		// Draw mounting points and product codes
 		pdf.setFillColor(255, 0, 0);
+		pdf.setFontSize(6);
+		let index = 0;
 		for (let i = 0; i < rows; i++) {
 			for (let j = 0; j < cols; j++) {
-				const x = startX + 4 + j * spacingX; // Add 1 point offset from left border
-				const y = startY + 4 + i * spacingY; // Add 1 point offset from top border
-				pdf.circle(x, y, dotSize / 2, 'F');
+				const x = startX + j * separation * scale;
+				const y = startY + i * separation * scale;
+				pdf.circle(x, y, 2 * scale, 'F');
+
+				if (productCodes && productCodes[index]) {
+					pdf.text(productCodes[index], x + 3 * scale, y + 3 * scale, { align: 'left' });
+				}
+
+				index++;
 			}
 		}
 
-		pdf.save(`exhibicion_${clientName}_${deliveryDate}.pdf`);
+		pdf.save(`exhibicion_${clientName}_${deliveryDate.toISOString().split('T')[0]}.pdf`);
 	};
 
 	return (
