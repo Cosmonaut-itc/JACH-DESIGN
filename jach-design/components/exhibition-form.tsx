@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { ReactNode, useState } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import * as z from 'zod';
@@ -22,6 +22,8 @@ import { CalendarIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import ProductCodeTable from '@/components/product-table';
+import ProductCodeGrid from '@/components/product-code-grid';
 
 interface ExhibitionFormProps {
 	onSubmitAction: (data: ExhibitionData) => void;
@@ -285,25 +287,25 @@ export function ExhibitionForm({ onSubmitAction }: ExhibitionFormProps) {
 										Ingrese los códigos de producto para cada punto de montaje.
 										Se necesitan {calculateMountingPoints()} códigos.
 									</FormDescription>
-									<div className="grid gap-2">
-										{Array.from({ length: calculateMountingPoints() }).map(
-											(_, index) => (
-												<FormControl key={index}>
-													<Input
-														placeholder={`Código para el punto ${index + 1}`}
-														value={field.value?.[index] || "''"}
-														onChange={(e) => {
-															const newCodes = [
-																...(field.value || []),
-															];
-															newCodes[index] = e.target.value;
-															field.onChange(newCodes);
-														}}
-													/>
-												</FormControl>
-											),
-										)}
-									</div>
+
+									<ProductCodeGrid
+										length={formData.length || 0}
+										height={formData.height || 0}
+										horizontalSeparation={formData.horizontalSeparation || 0}
+										verticalSeparation={formData.verticalSeparation || 0}
+										productCodes={field.value || []}
+										onChange={field.onChange}
+									/>
+
+									<ProductCodeTable
+										length={formData.length || 0}
+										height={formData.height || 0}
+										horizontalSeparation={formData.horizontalSeparation || 0}
+										verticalSeparation={formData.verticalSeparation || 0}
+										productCodes={field.value || []}
+										onChange={field.onChange}
+									/>
+
 									<FormMessage />
 								</FormItem>
 							)}
