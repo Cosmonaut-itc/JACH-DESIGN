@@ -43,6 +43,7 @@ export function ExhibitionForm({ onSubmitAction }: ExhibitionFormProps) {
 			clientName: '',
 			sellerName: '',
 			projectName: '',
+			deliveryAddress: '',
 			deliveryDate: new Date(),
 			productCodes: [],
 		},
@@ -213,6 +214,26 @@ export function ExhibitionForm({ onSubmitAction }: ExhibitionFormProps) {
 									<FormControl>
 										<Input {...field} />
 									</FormControl>
+									<FormMessage />
+								</FormItem>
+							)}
+						/>
+						<FormField
+							control={form.control}
+							name="deliveryAddress"
+							render={({ field }) => (
+								<FormItem>
+									<FormLabel>Dirección de Entrega</FormLabel>
+									<FormControl>
+										<Input
+											{...field}
+											placeholder="Ingrese la dirección completa de entrega"
+										/>
+									</FormControl>
+									<FormDescription>
+										Ingrese la dirección completa donde se entregará la
+										exhibición
+									</FormDescription>
 									<FormMessage />
 								</FormItem>
 							)}

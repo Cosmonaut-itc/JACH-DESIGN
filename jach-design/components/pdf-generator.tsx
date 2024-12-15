@@ -19,6 +19,7 @@ export function PDFGenerator({ data }: PDFGeneratorProps) {
 			sellerName,
 			projectName,
 			deliveryDate,
+			deliveryAddress,
 			productCodes,
 		} = data;
 
@@ -29,7 +30,7 @@ export function PDFGenerator({ data }: PDFGeneratorProps) {
 		});
 
 		const padding = 40;
-		const headerHeight = 120;
+		const headerHeight = 140;
 
 		const LETTER_WIDTH = 612;
 		const LETTER_HEIGHT = 792;
@@ -47,6 +48,7 @@ export function PDFGenerator({ data }: PDFGeneratorProps) {
 		pdf.text(`Vendedor: ${sellerName}`, padding, padding + 15);
 		pdf.text(`Proyecto: ${projectName}`, padding, padding + 30);
 		pdf.text(`Fecha de Entrega: ${deliveryDate.toLocaleDateString()}`, padding, padding + 45);
+		pdf.text(`Dirección de Entrega: ${deliveryAddress}`, padding, padding + 60);
 
 		// Calculate edge-to-point distances
 		const horizontalEdgeSpace = (length - (cols - 1) * horizontalSeparation) / 2;

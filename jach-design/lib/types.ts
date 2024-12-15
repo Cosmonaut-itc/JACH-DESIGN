@@ -9,6 +9,7 @@ export const ExhibitionDataSchema = z.object({
 	sellerName: z.string().min(1),
 	projectName: z.string().min(1),
 	deliveryDate: z.date(),
+	deliveryAddress: z.string().min(1, 'La dirección de entrega es requerida'),
 	productCodes: z.array(z.string()).optional(),
 });
 
