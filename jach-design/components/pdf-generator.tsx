@@ -13,7 +13,8 @@ export function PDFGenerator({ data }: PDFGeneratorProps) {
 		const {
 			length,
 			height,
-			separation,
+			horizontalSeparation,
+			verticalSeparation,
 			clientName,
 			sellerName,
 			projectName,
@@ -36,8 +37,8 @@ export function PDFGenerator({ data }: PDFGeneratorProps) {
 		const availableWidth = LETTER_WIDTH - 2 * padding;
 		const availableHeight = LETTER_HEIGHT - headerHeight - 2 * padding;
 
-		const cols = Math.floor(length / separation);
-		const rows = Math.floor(height / separation);
+		const cols = Math.floor(length / horizontalSeparation);
+		const rows = Math.floor(height / verticalSeparation);
 		const calculatedDots = cols * rows;
 
 		// Header information
@@ -48,24 +49,29 @@ export function PDFGenerator({ data }: PDFGeneratorProps) {
 		pdf.text(`Fecha de Entrega: ${deliveryDate.toLocaleDateString()}`, padding, padding + 45);
 
 		// Calculate edge-to-point distances
-		const horizontalEdgeSpace = (length - (cols - 1) * separation) / 2;
-		const verticalEdgeSpace = (height - (rows - 1) * separation) / 2;
+		const horizontalEdgeSpace = (length - (cols - 1) * horizontalSeparation) / 2;
+		const verticalEdgeSpace = (height - (rows - 1) * verticalSeparation) / 2;
 
 		// Round measurements to one decimal place for cleaner display
 		const roundToOne = (num: number) => Math.round(num * 10) / 10;
 
 		pdf.text(`Dimensiones: ${length}cm x ${height}cm`, LETTER_WIDTH - 280, padding);
-		pdf.text(`Separación entre puntos: ${separation}cm`, LETTER_WIDTH - 280, padding + 15);
-		pdf.text(`Total de Puntos: ${calculatedDots}`, LETTER_WIDTH - 280, padding + 30);
+		pdf.text(
+			`Separación horizontal: ${horizontalSeparation}cm`,
+			LETTER_WIDTH - 280,
+			padding + 15,
+		);
+		pdf.text(`Separación vertical: ${verticalSeparation}cm`, LETTER_WIDTH - 280, padding + 30);
+		pdf.text(`Total de Puntos: ${calculatedDots}`, LETTER_WIDTH - 280, padding + 45);
 		pdf.text(
 			`Distancia al borde (Horizontal): ${roundToOne(horizontalEdgeSpace)}cm`,
 			LETTER_WIDTH - 280,
-			padding + 45,
+			padding + 60,
 		);
 		pdf.text(
 			`Distancia al borde (Vertical): ${roundToOne(verticalEdgeSpace)}cm`,
 			LETTER_WIDTH - 280,
-			padding + 60,
+			padding + 75,
 		);
 
 		// Separator line
@@ -92,8 +98,8 @@ export function PDFGenerator({ data }: PDFGeneratorProps) {
 		let index = 0;
 		for (let i = 0; i < rows; i++) {
 			for (let j = 0; j < cols; j++) {
-				const x = startX + j * separation * scale;
-				const y = startY + i * separation * scale;
+				const x = startX + j * horizontalSeparation * scale;
+				const y = startY + i * verticalSeparation * scale;
 				pdf.circle(x, y, 2 * scale, 'F');
 
 				if (productCodes && productCodes[index]) {

@@ -15,7 +15,7 @@ export function ExhibitionPreview({ data }: ExhibitionPreviewProps) {
 	useEffect(() => {
 		if (!mountRef.current) return;
 
-		const { length, height, separation, productCodes } = data;
+		const { length, height, horizontalSeparation, verticalSeparation, productCodes } = data;
 
 		const scene = new THREE.Scene();
 		scene.background = new THREE.Color(0xffffff);
@@ -55,8 +55,8 @@ export function ExhibitionPreview({ data }: ExhibitionPreviewProps) {
 		scene.add(baseMesh);
 
 		// Create mounting points with product codes
-		const cols = Math.floor(length / separation);
-		const rows = Math.floor(height / separation);
+		const cols = Math.floor(length / horizontalSeparation);
+		const rows = Math.floor(height / verticalSeparation);
 		const totalDots = cols * rows;
 
 		const dotGeometry = new THREE.CircleGeometry(2, 32);
@@ -77,8 +77,8 @@ export function ExhibitionPreview({ data }: ExhibitionPreviewProps) {
 		const matrix = new THREE.Matrix4();
 		for (let i = 0; i < rows; i++) {
 			for (let j = 0; j < cols; j++) {
-				const x = j * separation - length / 2 + separation / 2;
-				const y = height / 2 - (i * separation + separation / 2);
+				const x = j * horizontalSeparation - length / 2 + horizontalSeparation / 2;
+				const y = height / 2 - (i * verticalSeparation + verticalSeparation / 2);
 				matrix.setPosition(x, y, 0.6);
 				instancedDots.setMatrixAt(index, matrix);
 

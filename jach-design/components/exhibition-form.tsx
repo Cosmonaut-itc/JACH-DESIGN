@@ -36,7 +36,8 @@ export function ExhibitionForm({ onSubmitAction }: ExhibitionFormProps) {
 		defaultValues: {
 			length: 215,
 			height: 220,
-			separation: 30,
+			horizontalSeparation: 30,
+			verticalSeparation: 30,
 			clientName: '',
 			sellerName: '',
 			projectName: '',
@@ -59,11 +60,12 @@ export function ExhibitionForm({ onSubmitAction }: ExhibitionFormProps) {
 		onSubmitAction(finalData as ExhibitionData);
 	};
 
+	// Update the calculateMountingPoints function
 	const calculateMountingPoints = () => {
-		const { length, height, separation } = formData;
-		if (length && height && separation) {
-			const cols = Math.floor(length / separation);
-			const rows = Math.floor(height / separation);
+		const { length, height, horizontalSeparation, verticalSeparation } = formData;
+		if (length && height && horizontalSeparation && verticalSeparation) {
+			const cols = Math.floor(length / horizontalSeparation);
+			const rows = Math.floor(height / verticalSeparation);
 			return cols * rows;
 		}
 		return 0;
@@ -120,28 +122,52 @@ export function ExhibitionForm({ onSubmitAction }: ExhibitionFormProps) {
 								)}
 							/>
 						</div>
-						<FormField
-							control={form.control}
-							name="separation"
-							render={({ field }) => (
-								<FormItem>
-									<FormLabel>Separación (cm)</FormLabel>
-									<FormControl>
-										<Input
-											type="number"
-											{...field}
-											onChange={(e) =>
-												field.onChange(parseFloat(e.target.value))
-											}
-										/>
-									</FormControl>
-									<FormDescription>
-										La separación mínima entre puntos
-									</FormDescription>
-									<FormMessage />
-								</FormItem>
-							)}
-						/>
+						<div className="grid gap-4 sm:grid-cols-2">
+							<FormField
+								control={form.control}
+								name="horizontalSeparation"
+								render={({ field }) => (
+									<FormItem>
+										<FormLabel>Separación Horizontal (cm)</FormLabel>
+										<FormControl>
+											<Input
+												type="number"
+												{...field}
+												onChange={(e) =>
+													field.onChange(parseFloat(e.target.value))
+												}
+											/>
+										</FormControl>
+										<FormDescription>
+											La separación horizontal entre puntos
+										</FormDescription>
+										<FormMessage />
+									</FormItem>
+								)}
+							/>
+							<FormField
+								control={form.control}
+								name="verticalSeparation"
+								render={({ field }) => (
+									<FormItem>
+										<FormLabel>Separación Vertical (cm)</FormLabel>
+										<FormControl>
+											<Input
+												type="number"
+												{...field}
+												onChange={(e) =>
+													field.onChange(parseFloat(e.target.value))
+												}
+											/>
+										</FormControl>
+										<FormDescription>
+											La separación vertical entre puntos
+										</FormDescription>
+										<FormMessage />
+									</FormItem>
+								)}
+							/>
+						</div>
 						<Button type="button" onClick={() => handleNextStep(form.getValues())}>
 							Siguiente
 						</Button>
